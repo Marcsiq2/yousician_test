@@ -5,6 +5,7 @@ from flask import Flask
 import argparse
 from flask import jsonify
 from flask import request
+import warnings
 from flask import abort
 from flask import make_response
 from pymongo import MongoClient
@@ -45,29 +46,35 @@ def get_avg_difficulty():
 	if not data or not 'level' in data:
 		cursor = db.songs.find({}, {'difficulty':1, '_id':0})
 	else:
-		level = int(data.get('level'))
+		try:
+			level = int(data.get('level'))
+		except:
+			abort(400)
 		cursor = db.songs.find({'level':level}, {'difficulty':1, '_id':0})
 
 	res = [song['difficulty'] for song in cursor]
-	avg = np.average(res)	
+	with warnings.catch_warnings():
+		warnings.simplefilter("ignore", category=RuntimeWarning)
+		avg = np.average(res)	
 
 	return make_response(jsonify({'result':avg}), 200)
 
 @server.route('/songs/rating', methods=['POST'])
 def add_rating():
 	data = request.form
-	if not data or not 'song_id' in data or not  'rating' in data:
+	if not data or not 'song_id' in data or not 'rating' in data:
 		abort(400)
 
-	song_id = data.get('song_id')
-	rating = int(data.get('rating'))
-
-	if not (1<= rating <=5):
+	try:
+		song_id = ObjectId(data.get('song_id'))
+		rating = int(data.get('rating'))
+		assert(1<=rating<=5)
+	except:
 		abort(400)
+	
+	db.songs.update({'_id':song_id}, {'$push' : {"rating":rating}})
 
-	db.songs.update({'title':song_id}, {'$push' : {"rating":rating}})
-
-	cursor = db.songs.find({'title':song_id}, {'_id':0})
+	cursor = db.songs.find({'_id':song_id}, {'_id':0})
 	res = [song for song in cursor]
 
 	return make_response(jsonify({'result':res}), 200)	
@@ -75,14 +82,17 @@ def add_rating():
 
 @server.route('/songs/avg/rating/<song_id>', methods=['GET'])
 def get_rating(song_id):
-	if not song_id:
+	try:
+		sid = ObjectId(song_id)
+	except:
 		abort(400)
-	cursor = db.songs.find({'title':song_id}, {'rating':1, '_id':0})
+	cursor = db.songs.find({'_id':sid}, {'rating':1, '_id':0})
 	res = dict()
 	for song in cursor:
-		res['highest'] = max(song['rating'])
-		res['lowest'] = min(song['rating'])
-		res['average'] = np.average(song['rating'])
+		if 'rating' in song:
+			res['highest'] = max(song['rating'])
+			res['lowest'] = min(song['rating'])
+			res['average'] = np.average(song['rating'])
 	return make_response(jsonify({'result':res}), 200)
 
 
