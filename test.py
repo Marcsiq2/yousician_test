@@ -9,6 +9,7 @@ from math import isnan
 from pprint import pprint
 from pymongo import MongoClient
 
+PER_PAGE = 5
 
 GET, POST = range(2)
 hostname = None
@@ -52,10 +53,16 @@ def del_songs():
 	print "Deleted " + str(result.deleted_count) + ' songs!'
 
 
-def get_songs():
-	res = get_response('songs',{}, method=GET)
-	if res:
-		assert(res['result'] == songs)
+def get_songs(page=None):
+	if page:
+		res = get_response('songs',{'page':page}, method=GET)
+		if res:
+			assert(res['result'] == songs[(page-1)*PER_PAGE:page*PER_PAGE])
+
+	else:
+		res = get_response('songs',{}, method=GET)
+		if res:
+			assert(res['result'] == songs)
 
 
 def get_avg_difficulty(level=None):
@@ -131,6 +138,8 @@ if __name__ == '__main__':
 	add_songs()
 
 	get_songs()
+	get_songs(page=2)
+	get_songs(page=10)
 
 	get_avg_difficulty()
 	get_avg_difficulty(6)
