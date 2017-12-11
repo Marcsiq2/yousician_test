@@ -140,6 +140,7 @@ if __name__ == '__main__':
 	get_songs()
 	get_songs(page=2)
 	get_songs(page=10)
+	get_songs(page=-1) #400 response (not valid page)
 
 	get_avg_difficulty()
 	get_avg_difficulty(6)

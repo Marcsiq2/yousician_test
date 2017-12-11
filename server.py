@@ -25,7 +25,11 @@ def get_songs():
 		cursor = db.songs.find({}, {'_id':0})
 		res = [song for song in cursor]
 	else:
-		page = int(data.get('page')) - 1 
+		try:
+			page = int(data.get('page')) - 1 
+			assert(page>=0)
+		except:
+			abort(400, 'Parameter \'page\' must be a valid integer greater than 0')
 		cursor = db.songs.find({}, {'_id':0}).skip(page*PER_PAGE).limit(PER_PAGE)
 		res = [song for song in cursor]
 	return make_response(jsonify({'result':res}), 200)
