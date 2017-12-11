@@ -31,8 +31,12 @@ def get_response(fct, data, method=GET):
         req = urllib2.Request('%s?%s' % (url, urllib.urlencode(data)))
     elif method == POST:
         req = urllib2.Request(url, urllib.urlencode(data))
-    response = urllib2.urlopen(req)
-    return json.loads(response.read())
+    try:
+    	response = urllib2.urlopen(req)
+    	return json.loads(response.read())
+    except urllib2.HTTPError as e:
+    	print str(e.code) + " ERROR: " + e.read()
+    
 
 
 def add_songs():
@@ -50,7 +54,8 @@ def del_songs():
 
 def get_songs():
 	res = get_response('songs',{}, method=GET)
-	assert(res['result'] == songs)
+	if res:
+		assert(res['result'] == songs)
 
 
 def get_avg_difficulty(level=None):
@@ -65,15 +70,17 @@ def get_avg_difficulty(level=None):
 			avg = np.average(dif)	
 			res = get_response('songs/avg/difficulty', {})
 
-		if not (isnan(avg) and isnan(res['result'])):
-			assert(res['result'] == avg)
+		if res:
+			if not (isnan(avg) and isnan(res['result'])):
+				assert(res['result'] == avg)
 
 
 def get_songs_search(message=None):
 	if message:
 		res = get_response('songs/search', {'message':message})
 		s = [song for song in songs if (message.lower() in song['title'].lower() or message.lower() in song['artist'].lower())]
-		assert(res['result'] == s)
+		if res:
+			assert(res['result'] == s)
 	else:
 		res = get_response('songs/search', {})
 
@@ -95,8 +102,8 @@ def grating(id_num):
 		resrat['lowest'] = min(rats)
 		resrat['average'] = np.average(rats)
 	res = get_rating(ids[id_num])
-
-	assert(res['result'] == resrat)
+	if res:
+		assert(res['result'] == resrat)
 
 def get_rating(song_id=None):
 	res = get_response(('songs/avg/rating/')+str(song_id), {})
@@ -130,21 +137,21 @@ if __name__ == '__main__':
 	get_avg_difficulty(13)
 	get_avg_difficulty(2)
 	get_avg_difficulty(-3)
-	# get_avg_difficulty('s') #400 response (not valid level)
+	get_avg_difficulty('s') #400 response (not valid level)
 
 	get_songs_search('yousi')
 	get_songs_search('IN')
-	# get_songs_search() #400 response (no message field)
+	get_songs_search() #400 response (no message field)
 
 	arating(3, 3)	
 	arating(3, 5)
 	arating(4, 5)
-	# add_rating('awaki', 3) #400 response (not valid id)
-	# add_rating(ids[3], 7) #400 response (not valid rating)
+	add_rating('awaki', 3) #400 response (not valid id)
+	add_rating(ids[3], 7) #400 response (not valid rating)
 
 	grating(3)
 	grating(5)
-	# get_rating('awaki') #400 response (not valid id)
+	get_rating('awaki') #400 response (not valid id)
 
 	# del_songs()
 

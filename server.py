@@ -17,7 +17,6 @@ server = Flask(__name__)
 client = MongoClient()
 db = client.songs
 
-
 @server.route('/songs', methods=['GET'])
 def get_songs():
 	cursor = db.songs.find({}, {'_id':0})
@@ -29,7 +28,7 @@ def get_songs():
 def get_songs_search():
 	data = request.args
 	if not data or not 'message' in data:
-		abort(400)
+		abort(400, 'Not \'message\' field in query parameters')
 	message = data.get('message')
 	cursor = db.songs.find({'$or':[
 		{'title': re.compile(message, re.IGNORECASE)},
@@ -49,7 +48,7 @@ def get_avg_difficulty():
 		try:
 			level = int(data.get('level'))
 		except:
-			abort(400)
+			abort(400, 'Parameter \'level\' must be a valid integer')
 		cursor = db.songs.find({'level':level}, {'difficulty':1, '_id':0})
 
 	res = [song['difficulty'] for song in cursor]
@@ -63,14 +62,16 @@ def get_avg_difficulty():
 def add_rating():
 	data = request.form
 	if not data or not 'song_id' in data or not 'rating' in data:
-		abort(400)
-
+		abort(400, 'Query parameters must include \'song_id\' and \'rating\'')
 	try:
 		song_id = ObjectId(data.get('song_id'))
+	except:
+		abort(400, 'Parameter \'song_id\' must be a valid ObjectId identifier')
+	try:
 		rating = int(data.get('rating'))
 		assert(1<=rating<=5)
 	except:
-		abort(400)
+		abort(400, 'Parameter \'rating\' must be a valid integer between 1 and 5')
 	
 	db.songs.update({'_id':song_id}, {'$push' : {"rating":rating}})
 
@@ -85,7 +86,7 @@ def get_rating(song_id):
 	try:
 		sid = ObjectId(song_id)
 	except:
-		abort(400)
+		abort(400, 'Parameter \'song_id\' must be a valid ObjectId identifier')
 	cursor = db.songs.find({'_id':sid}, {'rating':1, '_id':0})
 	res = dict()
 	for song in cursor:
@@ -98,8 +99,8 @@ def get_rating(song_id):
 
 @server.errorhandler(400)
 def not_found(error):
-    return make_response(jsonify({'error': "The request could not be understood by the server due to malformed syntax. "
-    	"The client SHOULD NOT repeat the request without modifications."}), 400)
+	return make_response(jsonify({"message": "The request could not be understood by the server due to malformed syntax. "
+		"The client SHOULD NOT repeat the request without modifications.", "error":error.description}) , 400)
 
 
 if __name__ == '__main__':
